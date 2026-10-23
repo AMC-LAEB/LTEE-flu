@@ -1,0 +1,387 @@
+---
+title: "Dynamics of observed molecular evolution"
+output: html_notebook
+---
+
+# Dynamics of observed molecular evolution
+
+R notebook to perform statistical analysis on the dynamics of observed molecular dynamics output to find donor-specific differences
+
+## 0. General
+
+### 0.1. load libraries
+
+```{r}
+#load libraries
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(car)
+library(dplyr)
+```
+
+## 1. Total derived allele frequency
+
+Total derived Allele frequency is defined as $M_{p}(t) = \sum f_{p,m}(t)$, for all mutations $m$ in population $p$ at time $t$, as defined by [Good, et al. 2017](https://www.nature.com/articles/nature24287)
+
+```{r}
+#load total derived allele frequency data
+genome_df <- read.csv("../results/genome_wide_accumulative_freq_over_time.csv")
+genome_df$donor <- factor(genome_df$donor)
+
+```
+
+### 1.1. Compares rates between donors
+
+GENERAL COMMENT HERE: Boundary singular fit for most the slope + intercept models \> but we know that each population should have it's own individual slope. So tested a slope + intercept model without correlation, following bates, et al. 2015. Although the original slope + intercept model is a better fit slope + intercept model without correlation still provides a better fit than compared to the intercept only model and solves the boundary issue. Since results are still the same with and without correlation. Since model without correlation does do have the boundary issue going with the no corr model to avoid type I error
+
+Used raw passage values because uncorrelated random-effects models are not invariant to shifts in the predictor (Bates, et al. 2015) \> checked passage_c results anyway and found that results differed
+
+```{r}
+ctrl <- lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 200000))
+```
+
+#### 1.1.1. Accumulative freq
+
+```{r}
+fit_intercept <- lmer("accumulative_freq ~ passage_c * donor + (1 | population)", data = genome_df, REML = FALSE, control=ctrl)
+fit_slope <- lmer("accumulative_freq ~ passage_c* donor + (1 + passage_c | population)", data = genome_df, REML =  FALSE, control=ctrl)
+
+isSingular(fit_intercept)
+isSingular(fit_slope)
+anova(fit_intercept, fit_slope)
+```
+
+```{r}
+fit_intercept <- lmer("accumulative_freq ~ passage * donor + (1 | population)", data = genome_df, REML = FALSE, control=ctrl)
+fit_slope <- lmer("accumulative_freq ~ passage* donor + (1 + passage | population)", data = genome_df, REML =  FALSE, control=ctrl)
+
+fit_slope_no_corr <- lmer("accumulative_freq ~ passage* donor + (1 + passage|| population)", data = genome_df, REML =  FALSE, control=ctrl)
+
+isSingular(fit_intercept)
+isSingular(fit_slope)
+isSingular(fit_slope_no_corr)
+anova(fit_intercept, fit_slope, fit_slope_no_corr)
+
+```
+
+model with population specific intercept and rate is the better fit
+
+```{r}
+fit <- lmer("accumulative_freq ~ passage * donor + (1 + passage|| population)", data = genome_df, REML = TRUE, control=ctrl)
+summary(fit)
+```
+
+```{r}
+wald_res <- linearHypothesis(fit,
+    c("passage:donor2 = 0",
+      "passage:donor3 = 0",
+      "passage:donor4 = 0"),
+    test = "Chisq")
+ 
+wald_res
+```
+
+```{r}
+anova(fit, type = 3, ddf = "Kenward-Roger")
+```
+
+```{r}
+# pairwise comparisons of slopes between donors, Tukey adjusted
+ee <- emtrends(fit, specs = "donor", var = "passage")
+contrasts <- pairs(ee, adjust = "tukey")
+res <- as.data.frame(summary(contrasts))
+res$sig <- res$p.value < 0.05
+res
+```
+
+checking out results when passage is mean centered
+
+```{r}
+fit <- lmer("accumulative_freq ~ passage_c * donor + (1 + passage_c || population)", data = genome_df, REML = TRUE, control=ctrl
+            )
+
+anova(fit, type = 3, ddf = "Kenward-Roger")
+
+fit <- lmer("accumulative_freq ~ passage_c * donor + (1 + passage_c | population)", data = genome_df, REML = TRUE, control=ctrl
+            )
+
+anova(fit, type = 3, ddf = "Kenward-Roger")
+```
+
+#### 1.1.2 Non-synonymous accumulative freq
+
+```{r}
+fit_intercept <- lmer("accumulative_nonsyn_freq ~ passage_c * donor + (1 | population)", data = genome_df, REML = FALSE, control=ctrl)
+fit_slope <- lmer("accumulative_nonsyn_freq ~ passage_c* donor + (1 + passage_c | population)", data = genome_df, REML =  FALSE, control=ctrl)
+
+isSingular(fit_intercept)
+isSingular(fit_slope)
+anova(fit_intercept, fit_slope)
+```
+
+```{r}
+fit_intercept <- lmer("accumulative_nonsyn_freq ~ passage* donor + (1 | population)", data = genome_df, REML = FALSE, control=ctrl)
+fit_slope <- lmer("accumulative_nonsyn_freq ~ passage* donor + (1 + passage | population)", data = genome_df, REML = FALSE, control=ctrl)
+
+fit_slope_no_corr <- lmer("accumulative_nonsyn_freq ~ passage * donor + (1 + passage || population)", data = genome_df, REML = FALSE, control=ctrl)
+
+isSingular(fit_intercept)
+isSingular(fit_slope)
+isSingular(fit_slope_no_corr)
+anova(fit_intercept, fit_slope, fit_slope_no_corr)
+```
+
+model with population specific intercept and rate is the better fit
+
+```{r}
+fit <- lmer("accumulative_nonsyn_freq ~ passage* donor + (1 + passage || population)", data = genome_df, REML = TRUE, control=ctrl)
+summary(fit)
+```
+
+```{r}
+wald_res <- linearHypothesis(fit,
+    c("passage:donor2 = 0",
+      "passage:donor3 = 0",
+      "passage:donor4 = 0"),
+    test = "Chisq")
+ 
+wald_res
+```
+
+```{r}
+anova(fit, type = 3, ddf = "Kenward-Roger")
+```
+
+```{r}
+# pairwise comparisons of slopes between donors, Tukey adjusted
+ee <- emtrends(fit, specs = "donor", var = "passage")
+contrasts <- pairs(ee, adjust = "tukey")
+res <- as.data.frame(summary(contrasts))
+res$sig <- res$p.value < 0.05
+res
+```
+
+Checking out results when passage is mean centered
+
+```{r}
+fit <- lmer("accumulative_nonsyn_freq ~ passage_c * donor + (1 + passage_c || population)", data = genome_df, REML = TRUE, control=ctrl
+            )
+
+anova(fit, type = 3, ddf = "Kenward-Roger")
+
+fit <- lmer("accumulative_nonsyn_freq ~ passage_c * donor + (1 + passage_c | population)", data = genome_df, REML = TRUE, control=ctrl
+            )
+
+anova(fit, type = 3, ddf = "Kenward-Roger")
+```
+
+#### 1.1.3 Synonymous accumulative freq
+
+```{r}
+fit_intercept <- lmer("accumulative_syn_freq ~ passage_c * donor + (1 | population)", data = genome_df, REML = FALSE, control=ctrl)
+fit_slope <- lmer("accumulative_syn_freq ~ passage_c* donor + (1 + passage_c | population)", data = genome_df, REML =  FALSE, control=ctrl)
+
+isSingular(fit_intercept)
+isSingular(fit_slope)
+anova(fit_intercept, fit_slope)
+```
+
+```{r}
+fit_intercept <- lmer("accumulative_syn_freq ~ passage* donor + (1 | population)", data = genome_df, REML = TRUE, control=ctrl)
+fit_slope <- lmer("accumulative_syn_freq ~ passage * donor + (1 + passage | population)", data = genome_df, REML = TRUE, control=ctrl)
+fit_slope_no_corr <- lmer("accumulative_syn_freq ~ passage* donor + (1 + passage || population)", data = genome_df, REML = TRUE, control=ctrl)
+
+isSingular(fit_intercept)
+isSingular(fit_slope)
+isSingular(fit_slope_no_corr)
+anova(fit_intercept, fit_slope, fit_slope_no_corr)
+```
+
+model with population specific intercept and rate is the better fit
+
+```{r}
+fit <- lmer("accumulative_syn_freq ~ passage * donor + (1 + passage || population)", data = genome_df, REML = TRUE, control=ctrl
+            )
+summary(fit)
+```
+
+```{r}
+wald_res <- linearHypothesis(fit,
+    c("passage:donor2 = 0",
+      "passage:donor3 = 0",
+      "passage:donor4 = 0"),
+    test = "Chisq")
+ 
+wald_res
+```
+
+```{r}
+anova(fit, type = 3, ddf = "Kenward-Roger")
+```
+
+```{r}
+# pairwise comparisons of slopes between donors, Tukey adjusted
+ee <- emtrends(fit, specs = "donor", var = "passage")
+contrasts <- pairs(ee, adjust = "tukey")
+res <- as.data.frame(summary(contrasts))
+res$sig <- res$p.value < 0.05
+res
+```
+
+checking out result when passage is mean centered
+
+```{r}
+fit <- lmer("accumulative_syn_freq ~ passage_c * donor + (1 + passage_c || population)", data = genome_df, REML = TRUE, control=ctrl
+            )
+
+anova(fit, type = 3, ddf = "Kenward-Roger")
+
+fit <- lmer("accumulative_syn_freq ~ passage_c * donor + (1 + passage_c | population)", data = genome_df, REML = TRUE, control=ctrl
+            )
+anova(fit, type = 3, ddf = "Kenward-Roger")
+```
+
+### 1.2. Compare rates between population
+
+#### 1.2.1. Accumulative frequency
+
+```{r}
+fit <- lm("accumulative_freq ~ passage_c * population", data = genome_df)
+summary(fit)
+coef_df <- as.data.frame(summary(fit)$coefficients)
+coef_df$term <- rownames(coef_df)
+rownames(coef_df) <- NULL
+coef_df <- coef_df[, c("term", "Estimate", "Std. Error", "t value", "Pr(>|t|)")]
+#write.csv(coef_df, file = "../results/estimated_rates/accumulative_freq_rate_per_pop.csv", row.names = FALSE)
+
+```
+
+```{r}
+fit_null <- lm("accumulative_freq ~ passage_c + population", data = genome_df)
+anova(fit_null, fit)
+```
+
+```{r}
+res <- emtrends(fit, pairwise ~ population, var = "passage_c", adjust = "tukey")
+
+slopes    <- as.data.frame(confint(res$emtrends))
+contrasts <- as.data.frame(res$contrasts)
+
+#write.csv(contrasts, "../results/estimated_rates/accumulative_freq_rate_per_pop_pairwise_contrast.csv", row.names = FALSE)
+#write.csv(slopes, "../results/estimated_rates/accumulative_freq_rate_per_pop.csv", row.names = FALSE)
+res
+```
+
+#### 1.2.2. Non-synonymous accumulative frequency
+
+```{r}
+fit <- lm("accumulative_nonsyn_freq ~ passage_c * population", data = genome_df)
+summary(fit)
+coef_df <- as.data.frame(summary(fit)$coefficients)
+coef_df$term <- rownames(coef_df)
+rownames(coef_df) <- NULL
+coef_df <- coef_df[, c("term", "Estimate", "Std. Error", "t value", "Pr(>|t|)")]
+#write.csv(coef_df, file = "../results/estimated_rates/accumulative_nonsyn_freq_rate_per_pop.csv", row.names = FALSE)
+```
+
+```{r}
+fit_null <- lm("accumulative_nonsyn_freq ~ passage_c + population", data = genome_df)
+anova(fit_null, fit)
+```
+
+```{r}
+res <- emtrends(fit, pairwise ~ population, var = "passage_c", adjust = "tukey")
+
+slopes    <- as.data.frame(confint(res$emtrends))
+contrasts <- as.data.frame(res$contrasts)
+
+#write.csv(contrasts, "../results/estimated_rates/accumulative_nonsyn_freq_rate_per_pop_pairwise_contrast.csv", row.names = FALSE)
+#write.csv(slopes, "../results/estimated_rates/accumulative_nonsyn_freq_rate_per_pop.csv", row.names = FALSE)
+res
+```
+
+#### 1.2.3. Synonymous frequency
+
+```{r}
+fit <- lm("accumulative_syn_freq ~ passage_c * population", data = genome_df)
+summary(fit)
+coef_df <- as.data.frame(summary(fit)$coefficients)
+coef_df$term <- rownames(coef_df)
+rownames(coef_df) <- NULL
+coef_df <- coef_df[, c("term", "Estimate", "Std. Error", "t value", "Pr(>|t|)")]
+#write.csv(coef_df, file = "../results/estimated_rates/accumulative_syn_freq_rate_per_pop.csv", row.names = FALSE)
+```
+
+```{r}
+fit_null <- lm("accumulative_syn_freq ~ passage_c + population", data = genome_df)
+anova(fit_null, fit)
+```
+
+```{r}
+res <- emtrends(fit, pairwise ~ population, var = "passage_c", adjust = "tukey")
+
+slopes    <- as.data.frame(confint(res$emtrends))
+contrasts <- as.data.frame(res$contrasts)
+
+#write.csv(contrasts, "../results/estimated_rates/accumulative_syn_freq_rate_per_pop_pairwise_contrast.csv", row.names = FALSE)
+#write.csv(slopes, "../results/estimated_rates/accumulative_syn_freq_rate_per_pop.csv", row.names = FALSE)
+res
+```
+
+## 2. Nucleotide diversity
+
+```{r}
+pi_genome_df <- read.csv("../results/genome_wide_nucleotide_diversity_over_first_40_passages.csv")
+
+pi_genome_df$donor <- as.factor(pi_genome_df$donor)
+```
+
+```{r}
+fit_intercept <- lmer("pi_scaled ~ passage_c * donor + (1 | population)", data = pi_genome_df, REML = TRUE, control=ctrl)
+fit_slope <- lmer("pi_scaled ~ passage_c * donor + (1 + passage_c | population)", data = pi_genome_df, REML = TRUE, control=ctrl)
+
+isSingular(fit_intercept)
+isSingular(fit_slope)
+anova(fit_intercept, fit_slope)
+```
+
+```{r}
+fit_intercept <- lmer("pi_scaled ~ passage* donor + (1 | population)", data = pi_genome_df, REML = FALSE, control=ctrl)
+fit_slope <- lmer("pi_scaled ~ passage * donor + (1 + passage | population)", data = pi_genome_df, REML = FALSE, control=ctrl)
+fit_slope_no_corr <- lmer("pi_scaled ~ passage * donor + (1 + passage || population)", data = pi_genome_df, REML = FALSE, control=ctrl)
+
+isSingular(fit_intercept)
+isSingular(fit_slope)
+isSingular(fit_slope_no_corr)
+anova(fit_intercept, fit_slope, fit_slope_no_corr)
+```
+
+Using mean-centered passage and intercept only model. As that is not giving in a boundary issue and is the best fit best on AIC
+
+```{r}
+fit <- lmer("pi_scaled ~ passage_c * donor + (1 | population)", data = pi_genome_df)
+summary(fit)
+```
+
+```{r}
+wald_res <- linearHypothesis(fit,
+    c("passage_c:donor2 = 0",
+      "passage_c:donor3 = 0",
+      "passage_c:donor4 = 0"),
+    test = "Chisq")
+ 
+wald_res
+```
+
+```{r}
+anova(fit, type = 3, ddf = "Kenward-Roger")
+```
+
+```{r}
+ee <- emtrends(fit, specs ="donor", var = "passage_c")
+contrasts <- pairs(ee, adjust = "tukey")
+res <- as.data.frame(summary(contrasts))
+res$sig <- res$p.value < 0.05
+res
+```

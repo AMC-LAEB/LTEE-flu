@@ -1,0 +1,75 @@
+---
+title: "SNV frequency and HMM state assignment"
+output: html_notebook
+---
+
+# SNV frequency and HMM state assignment
+
+R notebook to perform statistical analysis on HMM state assignment and timing of fixation events to find donor-specific and segment-specific differences
+
+## 0. General
+
+### 0.1. Load libraries
+
+```{r}
+library(emmeans)
+```
+
+## 1. Timing of first fixation effect
+
+```{r}
+first_fixation <- read.csv("../results/timing_of_first_fixation_event_per_population.csv")
+first_fixation$donor  <- factor(first_fixation$donor)
+```
+
+```{r}
+fit <- glm(passage ~ donor, data = first_fixation, family = Gamma(link = "log"))
+fit_null <- glm(passage ~ 1, data = first_fixation, family = Gamma(link = "log"))
+anova_res <- anova(fit_null, fit, test = "F")
+print(anova_res)
+```
+
+```{r}
+#custom contrast to compare timing of donor 1 and 2 vs donor 3 and 4
+em <- emmeans(fit, ~donor)
+contrast_res <- contrast(em, list("1+2 vs 3+4" = c(-0.5, -0.5, 0.5, 0.5)))
+summary_contrast <- summary(contrast_res, infer = c(TRUE, TRUE))
+print(summary_contrast)
+```
+
+```{r}
+est <- summary_contrast$estimate
+se <- summary_contrast$SE
+t_val <- summary_contrast$t.ratio
+p_val <- summary_contrast$p.value
+df <- summary_contrast$df
+ci_lower <- summary_contrast$lower.CL
+ci_upper <- summary_contrast$upper.CL
+
+cat(sprintf("Estimate (log scale) between 1+2 vs 3+4: %.3f, ratio: %.2f\n", est, exp(est)))
+cat(sprintf("95%% CI for ratio: %.2f to %.2f\n", exp(ci_lower), exp(ci_upper)))
+cat(sprintf("results t(%.0f) = %.2f, p = %.4f\n", df, t_val, p_val))
+```
+
+```{r}
+#need to scheffe adjust 
+df_model <- length(coef(fit)) - 1
+f_crit <- qf(0.95, df_model, df)
+scheffe_crit <- sqrt(df_model * f_crit)
+
+ci_log_scheffe_l <- est - scheffe_crit * se
+ci_log_scheffe_u <- est + scheffe_crit * se
+p_scheffe <- pf(t_val^2 / df_model, df_model, df, lower.tail = FALSE)
+
+cat(sprintf("Scheffe-adjusted: t = %.2f, p = %.4f | 95%%-CI ratio: %.2f to %.2f\n", 
+            t_val, p_scheffe, exp(ci_log_scheffe_l), exp(ci_log_scheffe_u)))
+```
+
+```{r}
+#pairwise comparison
+pairwise_res <- pairs(em, adjust = "holm")
+pdf <- as.data.frame(pairwise_res)
+pdf$sig <- pdf$p.value < 0.05
+
+print(pdf)
+```

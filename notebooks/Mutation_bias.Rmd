@@ -1,0 +1,41 @@
+---
+title: "Mutation bias"
+output: html_notebook
+---
+
+# Mutation bias investigation
+
+## 0. General
+
+### 0.1. load libraries
+
+```{r}
+library(lme4)
+```
+
+## 1. estimating experiment wide Ti/Tv ratio
+
+```{r}
+syn_titv <- read.csv("../results/TiTV_count_per_pop_non-overlapping_ORFS.csv")
+
+```
+
+```{r}
+fit <- glmer(cbind(Ti, Tv) ~ 1 + (1 | population), data = syn_titv, family = binomial)
+summary(fit)
+
+```
+
+estimate 95% CI
+
+```{r}
+mu <- fixef(fit)[["(Intercept)"]]
+ci <- confint(fit, parm = "(Intercept)", method = "profile")
+exp(c(Ti_Tv = mu, lower = ci[1], upper = ci[2]))
+```
+
+```{r}
+confint(fit, parm = "theta_", method = "profile")
+```
+
+compare to null
