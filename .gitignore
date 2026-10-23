@@ -1,0 +1,21 @@
+
+.DS_store
+
+#ignore work
+working_notebooks/
+
+data/references/stock*consensus.fasta
+data/references/stock*protein.fasta
+
+
+#ignore to large files/directories
+results/sorted_aligned_read_jsons
+results/error_model
+results/snvs
+results/phylogeny/sequences/
+results/simulations/processed_output
+results/simulations/raw_output
+results/simulations/apical_wash_sensitivity_analysis
+
+results/haplotype_reconstruction
+results/global_data/aligned_to_starting_virus
