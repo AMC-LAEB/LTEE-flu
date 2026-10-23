@@ -14,7 +14,7 @@ Python and dependencies to run [simulations.py](./scripts//simulations.py) are l
 
 ### Data
 
-Raw sequence reads can be downloaded from the [Sequence Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra) under [BioProject Accession number XXX](). For more detailed on sequencing processed see [raw read processing](#raw-read-processing-via-flutubepy) below and the manuscript. 
+Raw sequence reads can be downloaded from the [Sequence Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra) under [BioProject Accession number PRJNA1549747](https://www.ncbi.nlm.nih.gov/bioproject/1549747). For more detailed on sequencing processed see [raw read processing](#raw-read-processing-via-flutubepy) below and the manuscript. 
 
 (Intermediate) results directory can be obtained from [zenodo](https://zenodo.org/) under [link](). However most of intermediate results to run majority of the analyses can be directly obtained within this repository; see [results](./results/).
 
