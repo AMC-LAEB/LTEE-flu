@@ -16,6 +16,7 @@ results/phylogeny/sequences/
 results/simulations/processed_output
 results/simulations/raw_output
 results/simulations/apical_wash_sensitivity_analysis
-
 results/haplotype_reconstruction
 results/global_data/aligned_to_starting_virus
+
+figures/*.svg
