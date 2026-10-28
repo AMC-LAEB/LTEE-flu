@@ -2,7 +2,7 @@
 
 ## Long-term experimental evolution of seasonal influenza A/H3N2 virus reveals diverse evolutionary potential
 
-Codes to reproduce De Rooij, et al.
+Codes to reproduce De Rooij, Hulme, van Leeuwen, et al. (2026) Long-term experimental evolution of seasonal influenza A/H3N2 virus reveals diverse evolutionary potential, bioRxiv 2026.10.26.761891; doi: https://doi.org/10.64898/2026.10.26.761891
 
 ## Requirements
 
@@ -91,7 +91,7 @@ global data was downloaded from [GISAID EpiFlu Database](https://app1.epicov.org
 
 ## Authors
 
-When using this code or an adaptated version of this code, or any of the data generated in the experiment/analysis please cite: De Rooij, et al. .
+When using this code or an adaptated version of this code, or any of the data generated in the experiment/analysis please cite: De Rooij, et al. https://doi.org/10.64898/2026.10.26.761891
 
 All code published in this repository is written by Annelies J. H. de Rooij, a.j.h.derooij@amsterdamumc.nl.  
 Code of simulations.py, haplotype_reconstruction.py and flu-tube.py are adapted from codes written by Alvin X. Han.
