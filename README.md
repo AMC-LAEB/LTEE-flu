@@ -33,7 +33,7 @@ We processed the raw reads using the following command:
 ```python flutube.py -d <data_dir> -i <metadata_file>```
 
 - where `<data_dir>` is the directory contained the raw sequence reads (as uploaded to SRA)
-- and `<metadata_file>` is the [sample key](./data/complete_sample_key.csv)
+- and `<metadata_file>` is the metadata key provided [here](./data/complete_metadata_key.xlsx)
 All other input parameters were kept at default settings
 
 flutube.py processes individual flowcells results independently and pools computed coverage and variant calls in the end.  
